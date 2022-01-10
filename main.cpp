@@ -26,12 +26,6 @@ using std::string;
 #define MAX_DIGITS 20
 
 string md5_func(const std::string&  text) {
-    /*std::stringstream ss;
-    MD5 m(text);
-    ss << m;
-    string hash;
-    ss >> hash;
-    return hash;*/
     return md5(text);
 }
 
@@ -95,6 +89,13 @@ void loadDict(string inputFile) {
     //std::cout << " dictWordsIndexes[1] = " << dictWordsIndexes[1] << "\n";
 }
 
+char to_lower_char(char ch) {
+    if('A' <= ch and 'Z' >= ch) {
+        return ch - ('A' - 'a');
+    }
+    return ch;
+}
+
 void loadPasswords(string inputFile) {
     // https://stackoverflow.com/questions/7868936/read-file-line-by-line-using-ifstream-in-c
     std::ifstream infile(inputFile);
@@ -123,7 +124,7 @@ void loadPasswords(string inputFile) {
         }
         passwordsDescritpions[passwordIndex][i] = 0;
         for(i=0; i<MD5_LEN; i++) {
-            passwords[passwordIndex][i] = line.at(i);
+            passwords[passwordIndex][i] = to_lower_char(line.at(i));
         }
         crackedPasswords[passwordIndex] = false;
         passwordIndex++;
@@ -143,13 +144,20 @@ void iterDict() {
     }
 }
 
+bool isPasswordMatch(string passwordHash, int passwordIndex) {
+    for(int i=0; i<MD5_LEN; i++) {
+        if(passwordHash.at(i) != passwords[passwordIndex][i]) return false;
+    }
+    return true;
+}
+
 void consumerRegisterPasswordAsCracked(string password) {
     std::cout << "zalamano haslo " << password << "\n";
     
     string hash = md5_func(password);
     for(int i=0; i<loadedPasswords; i++) {
         if(crackedPasswords[i]) continue;
-        if(hash.compare(passwords[i])) {
+        if(isPasswordMatch(hash, i)) {
             //std::cout << "match!!";
             decodedPasswords[i] = password;
             crackedPasswords[i] = true;
@@ -198,7 +206,7 @@ void *consumer(void *t) {
         
         if(pthread_cond_timedwait(&count_threshold_cv, &count_mutex, &ts) == 0) {
             canSendPasswordNow = false;
-            std::cout << "GOT proper singal  ";
+            //std::cout << "GOT proper singal  ";
             consumerRegisterPasswordAsCracked(crackedPassword);
             pthread_mutex_unlock(&count_mutex);
         } else {
@@ -213,8 +221,8 @@ void tryOutPassword(string pass) {
     string hash = md5_func(pass);
     for(int i=0; i<loadedPasswords; i++) {
         if(crackedPasswords[i]) continue;
-        if(hash.compare(passwords[i])) {
-            //std::cout << "match!!";
+        if(isPasswordMatch(hash, i)) {
+            //std::cout << "match " << hash << " and " << passwords[i] << "\n";
             sendCrackedPassword(pass);
         }
     }
@@ -410,6 +418,9 @@ int runThreads()
 
 
 int main(int argc, char **argv) {
+    
+    //std::cout << "ala = " << md5_func("ala") << "\n";
+    
     signal(SIGHUP, handle_sighup);
     loadDict("/home/jacek/Downloads/krystian-md5/proj2/dict_small.txt");
     
