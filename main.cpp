@@ -14,6 +14,8 @@
 #include <signal.h>
 #include <time.h>
 
+#include "md5.h"
+
 using std::string;
 
 #define MD5_LEN 32
@@ -23,14 +25,14 @@ using std::string;
 #define PASSWORD_DESCRIPTION_LEN 1000
 #define MAX_DIGITS 20
 
-string md5(string text) {
-    if(text.compare("kota") == 0) {
-        return "31D9BB37999652D494BA78FEB642A73F";
-    }
-    if(text.compare("2ALA7") == 0) {
-        return "CED4A8463B37BF11F394C31DB455EFC1";
-    }
-    return "8F8579A77926FA12B533F2E1A327F5F3"; // 'inny'
+string md5_func(const std::string&  text) {
+    /*std::stringstream ss;
+    MD5 m(text);
+    ss << m;
+    string hash;
+    ss >> hash;
+    return hash;*/
+    return md5(text);
 }
 
 char *dictWords;
@@ -144,7 +146,7 @@ void iterDict() {
 void consumerRegisterPasswordAsCracked(string password) {
     std::cout << "zalamano haslo " << password << "\n";
     
-    string hash = md5(password);
+    string hash = md5_func(password);
     for(int i=0; i<loadedPasswords; i++) {
         if(crackedPasswords[i]) continue;
         if(hash.compare(passwords[i])) {
@@ -208,7 +210,7 @@ void *consumer(void *t) {
 }
 
 void tryOutPassword(string pass) {
-    string hash = md5(pass);
+    string hash = md5_func(pass);
     for(int i=0; i<loadedPasswords; i++) {
         if(crackedPasswords[i]) continue;
         if(hash.compare(passwords[i])) {
