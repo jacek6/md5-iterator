@@ -418,14 +418,17 @@ int runThreads()
 
 
 int main(int argc, char **argv) {
-    
-    //std::cout << "ala = " << md5_func("ala") << "\n";
-    
+    string dictPath = "dict_small.txt";
+    string passPath = "md5.txt";
+    if(argc >= 2) {
+        dictPath = argv[1];
+    }
+    if(argc >= 3) {
+        passPath = argv[2];
+    }
     signal(SIGHUP, handle_sighup);
-    loadDict("dict_small.txt");
-    
-    loadPasswords("md5.txt");
-    
+    loadDict(dictPath);
+    loadPasswords(passPath);
     runThreads();
     
     return 0;
