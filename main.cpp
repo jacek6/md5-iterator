@@ -21,11 +21,14 @@ using std::string;
 
 #define MAX_PASSWORDS     100 
 #define PASSWORD_DESCRIPTION_LEN 1000
-#define MAX_DIGITS 2
+#define MAX_DIGITS 20
 
 string md5(string text) {
-    if(text.compare("kota")) {
+    if(text.compare("kota") == 0) {
         return "31D9BB37999652D494BA78FEB642A73F";
+    }
+    if(text.compare("2ALA7") == 0) {
+        return "CED4A8463B37BF11F394C31DB455EFC1";
     }
     return "8F8579A77926FA12B533F2E1A327F5F3"; // 'inny'
 }
@@ -120,6 +123,7 @@ void loadPasswords(string inputFile) {
         for(i=0; i<MD5_LEN; i++) {
             passwords[passwordIndex][i] = line.at(i);
         }
+        crackedPasswords[passwordIndex] = false;
         passwordIndex++;
     }
     loadedPasswords = passwordIndex;
@@ -178,7 +182,6 @@ void sendCrackedPassword(string password) {
 }
 
 void *consumer(void *t) {
-    std::cout << "consumer start";
     while(true) {
         if (sig_caught) {
             sig_caught = 0;
@@ -193,6 +196,7 @@ void *consumer(void *t) {
         
         if(pthread_cond_timedwait(&count_threshold_cv, &count_mutex, &ts) == 0) {
             canSendPasswordNow = false;
+            std::cout << "GOT proper singal  ";
             consumerRegisterPasswordAsCracked(crackedPassword);
             pthread_mutex_unlock(&count_mutex);
         } else {
@@ -214,6 +218,11 @@ void tryOutPassword(string pass) {
     }
 }
 
+bool producer0_killed = false;
+bool producer1_killed = false;
+bool producer2_killed = false;
+pthread_t producer_threads[3];
+
 void *producer0(void *t) {
     string password;
     int maxNumber = 1;
@@ -221,6 +230,13 @@ void *producer0(void *t) {
         for(int number=0; number<maxNumber; number++) {
             for(int numberPost=0; numberPost<maxNumber; numberPost++) {
                 for(int wordIndex=0; wordIndex<dictLen; wordIndex++) {
+                    
+                    if(producer0_killed) {
+                        std::cout << "procuder0 killed \n";
+                        pthread_exit (NULL);
+                        return 0;
+                    }
+                    
                     std::stringstream ss;
                     if(digitsNum > 0) {
                         ss << number;
@@ -251,6 +267,13 @@ void *producer1(void *t) {
         for(int number=0; number<maxNumber; number++) {
             for(int numberPost=0; numberPost<maxNumber; numberPost++) {
                 for(int wordIndex=0; wordIndex<dictLen; wordIndex++) {
+                    
+                    if(producer1_killed) {
+                        std::cout << "procuder1 killed \n";
+                        pthread_exit (NULL);
+                        return 0;
+                    }
+                    
                     std::stringstream ss;
                     if(digitsNum > 0) {
                         ss << number;
@@ -286,6 +309,13 @@ void *producer2(void *t) {
         for(int number=0; number<maxNumber; number++) {
             for(int numberPost=0; numberPost<maxNumber; numberPost++) {
                 for(int wordIndex=0; wordIndex<dictLen; wordIndex++) {
+                    
+                    if(producer2_killed) {
+                        std::cout << "procuder2 killed \n";
+                        pthread_exit (NULL);
+                        return 0;
+                    }
+                    
                     std::stringstream ss;
                     if(digitsNum > 0) {
                         ss << number;
@@ -297,7 +327,7 @@ void *producer2(void *t) {
                         ss << numberPost;
                     }
                     ss >> password;
-                    std::cout << " try pass " << password << "   ";
+                    //std::cout << " try pass " << password << "   ";
                     tryOutPassword(password);
                 }
             }
@@ -308,9 +338,45 @@ void *producer2(void *t) {
     pthread_exit (NULL);
 }
 
+void startProducerThreads() {
+    producer0_killed = false;
+    producer1_killed = false;
+    producer2_killed = false;
+  pthread_attr_t attr;
+  int t1;
+
+
+  /* For portability, explicitly create threads in a joinable state */
+  pthread_attr_init(&attr);
+  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+  //pthread_create(&threads[0], &attr, watch_count, (void *)t1);
+  pthread_create(&producer_threads[0], &attr, producer0, &t1);
+  pthread_create(&producer_threads[1], &attr, producer1, &t1);
+  pthread_create(&producer_threads[2], &attr, producer2, &t1);
+}
+
+void *resetThread(void *t) {
+    while(true) {
+        sleep(1);
+        for (std::string line; std::getline(std::cin, line);) {
+            producer0_killed = true;
+            producer1_killed = true;
+            producer2_killed = true;
+            for (int i = 0; i < 2; i++) {
+                pthread_join(producer_threads[i], NULL);
+            }
+            
+            std::cout << "load new passwords file " << line << std::endl;
+            loadPasswords(line);
+            
+            startProducerThreads();
+        }
+    }
+}
+
 int runThreads()
 {
-  pthread_t threads[4];
+  pthread_t internal_threads[2];
   pthread_attr_t attr;
   int t1;
 
@@ -322,17 +388,15 @@ int runThreads()
   pthread_attr_init(&attr);
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
   //pthread_create(&threads[0], &attr, watch_count, (void *)t1);
-  pthread_create(&threads[0], &attr, producer0, &t1);
-  pthread_create(&threads[1], &attr, producer1, &t1);
-  pthread_create(&threads[2], &attr, producer2, &t1);
-  pthread_create(&threads[3], &attr, consumer, &t1);
+  pthread_create(&internal_threads[0], &attr, consumer, &t1);
+  pthread_create(&internal_threads[1], &attr, resetThread, &t1);
+  
+  startProducerThreads();
 
   /* Wait for all threads to complete */
-  std::cout << "joining threads \n";
   for (int i = 0; i < 2; i++) {
-    pthread_join(threads[i], NULL);
+    pthread_join(internal_threads[i], NULL);
   }
-  std::cout << "joined threads \n";
 
   /* Clean up and exit */
   pthread_attr_destroy(&attr);
@@ -345,12 +409,9 @@ int runThreads()
 
 int main(int argc, char **argv) {
     signal(SIGHUP, handle_sighup);
-    std::cout << "Hello, world  777 !" << std::endl;
     loadDict("/home/jacek/Downloads/krystian-md5/proj2/dict_small.txt");
-    iterDict();
     
     loadPasswords("/home/jacek/Downloads/krystian-md5/proj2/md5.txt");
-    std::cout << "Hello, world  666 !" << std::endl;
     
     runThreads();
     
