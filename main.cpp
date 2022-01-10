@@ -189,7 +189,7 @@ void tryOutPassword(string pass) {
 void *producer0(void *t) {
     string password;
     int maxNumber = 1;
-    for(int digitsNum=0; digitsNum<MAX_DIGITS; digitsNum++) {
+    for(int digitsNum=0; digitsNum<=MAX_DIGITS; digitsNum++) {
         for(int number=0; number<maxNumber; number++) {
             for(int numberPost=0; numberPost<maxNumber; numberPost++) {
                 for(int wordIndex=0; wordIndex<dictLen; wordIndex++) {
@@ -204,7 +204,7 @@ void *producer0(void *t) {
                         ss << numberPost;
                     }
                     ss >> password;
-                    //std::cout << " try pass " << password << "   ";
+                    std::cout << " try pass " << password << "   ";
                     tryOutPassword(password);
                 }
             }
