@@ -204,7 +204,7 @@ void *producer0(void *t) {
                         ss << numberPost;
                     }
                     ss >> password;
-                    std::cout << " try pass " << password << "   ";
+                    //std::cout << " try pass " << password << "   ";
                     tryOutPassword(password);
                 }
             }
@@ -218,20 +218,34 @@ void *producer0(void *t) {
 void *producer1(void *t) {
     string password;
     bool first;
-    for(int wordIndex=0; wordIndex<dictLen; wordIndex++) {
-        std::stringstream ss;
-        first = true;
-        for(int i=dictWordsIndexes[wordIndex]; i<dictWordsIndexes[wordIndex+1]; i++) {
-            if(first) {
-                ss << (char)toupper(dictWords[i]);
-                first = false;
-            } else {
-                ss << dictWords[i];
+    int maxNumber = 1;
+    for(int digitsNum=0; digitsNum<=MAX_DIGITS; digitsNum++) {
+        for(int number=0; number<maxNumber; number++) {
+            for(int numberPost=0; numberPost<maxNumber; numberPost++) {
+                for(int wordIndex=0; wordIndex<dictLen; wordIndex++) {
+                    std::stringstream ss;
+                    if(digitsNum > 0) {
+                        ss << number;
+                    }
+                    first = true;
+                    for(int i=dictWordsIndexes[wordIndex]; i<dictWordsIndexes[wordIndex+1]; i++) {
+                        if(first) {
+                            ss << (char)toupper(dictWords[i]);
+                            first = false;
+                        } else {
+                            ss << dictWords[i];
+                        }
+                    }
+                    if(digitsNum > 0) {
+                        ss << numberPost;
+                    }
+                    ss >> password;
+                    std::cout << " try pass " << password << "   ";
+                    tryOutPassword(password);
+                }
             }
         }
-        ss >> password;
-        //std::cout << " try pass " << password << "   ";
-        tryOutPassword(password);
+        maxNumber *= 10;
     }
     
     pthread_exit (NULL);
