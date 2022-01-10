@@ -135,28 +135,34 @@ pthread_mutex_t count_mutex;
 pthread_cond_t count_threshold_cv;
 string crackedPassword;
 bool canSendPasswordNow = false;
-pthread_mutex_t canSendPasswordNow_mutex;
 
 bool isPasswordCorrect(string password) {
     return false;
 }
 
 void sendCrackedPassword(string password) {
-    while(!canSendPasswordNow) ;
-    
-    pthread_mutex_lock(&count_mutex);
-    crackedPassword = password;
-    pthread_cond_signal(&count_threshold_cv);
-    pthread_mutex_unlock(&count_mutex);
+    while(true) {
+        if(!canSendPasswordNow) {
+            continue;
+        }
+        pthread_mutex_lock(&count_mutex);
+        if(!canSendPasswordNow) {
+            pthread_mutex_unlock(&count_mutex);
+            continue;
+        } else {
+            crackedPassword = password;
+            pthread_cond_signal(&count_threshold_cv);
+            pthread_mutex_unlock(&count_mutex);
+            break;
+        }
+    }
 }
 
 void *consumer(void *t) {
     std::cout << "consumer start";
     while(true) {
-        pthread_mutex_lock(&canSendPasswordNow_mutex);
-        canSendPasswordNow = true;
-        
         pthread_mutex_lock(&count_mutex);
+        canSendPasswordNow = true;
         pthread_cond_wait(&count_threshold_cv, &count_mutex);
         canSendPasswordNow = false;
         
@@ -164,7 +170,6 @@ void *consumer(void *t) {
         
         
         pthread_mutex_unlock(&count_mutex);
-        pthread_mutex_unlock(&canSendPasswordNow_mutex);
         break;
     }
     pthread_exit (NULL);
@@ -186,7 +191,6 @@ int runThreads()
 
   /* Initialize mutex and condition variable objects */
   pthread_mutex_init(&count_mutex, NULL);
-  pthread_mutex_init(&canSendPasswordNow_mutex, NULL);
   pthread_cond_init (&count_threshold_cv, NULL);
 
   /* For portability, explicitly create threads in a joinable state */
@@ -206,7 +210,6 @@ int runThreads()
   /* Clean up and exit */
   pthread_attr_destroy(&attr);
   pthread_mutex_destroy(&count_mutex);
-  pthread_mutex_destroy(&canSendPasswordNow_mutex);
   pthread_cond_destroy(&count_threshold_cv);
   pthread_exit (NULL);
 
