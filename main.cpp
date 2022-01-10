@@ -9,6 +9,11 @@
 #include <unistd.h>
 #include <cctype>
 
+
+// https://stackoverflow.com/questions/54871085/is-it-a-good-practice-to-call-pthread-sigmask-in-a-thread-created-by-stdthread
+#include <signal.h>
+#include <time.h>
+
 using std::string;
 
 #define MD5_LEN 32
@@ -32,8 +37,19 @@ int dictLen;
 char passwords[MAX_PASSWORDS][MD5_LEN];
 char passwordsDescritpions[MAX_PASSWORDS][PASSWORD_DESCRIPTION_LEN];
 bool crackedPasswords[MAX_PASSWORDS];
+int totalCrackedPasswords;
 int loadedPasswords;
 string decodedPasswords[MAX_PASSWORDS];
+
+static volatile sig_atomic_t sig_caught = 0;
+
+void handle_sighup(int signum) 
+{
+    /* in case we registered this handler for multiple signals */ 
+    if (signum == SIGHUP) {
+        sig_caught = 1;
+    }
+}
 
 void loadDict(string inputFile) {
     // https://stackoverflow.com/questions/7868936/read-file-line-by-line-using-ifstream-in-c
@@ -107,6 +123,7 @@ void loadPasswords(string inputFile) {
         passwordIndex++;
     }
     loadedPasswords = passwordIndex;
+    totalCrackedPasswords = 0;
     std::cout << "Loaded " << passwordIndex << " passwords\n";
 }
 
@@ -131,6 +148,7 @@ void consumerRegisterPasswordAsCracked(string password) {
             decodedPasswords[i] = password;
             crackedPasswords[i] = true;
             std::cout << "zlamane haslo '" << password << "' dla " << passwordsDescritpions[i] << "\n";
+            totalCrackedPasswords++;
         }
     }
 }
@@ -162,15 +180,25 @@ void sendCrackedPassword(string password) {
 void *consumer(void *t) {
     std::cout << "consumer start";
     while(true) {
+        if (sig_caught) {
+            sig_caught = 0;
+            std::cout << "Zlamano " << totalCrackedPasswords << " z " << loadedPasswords << " wszystkich hasel\n";
+        }
+        
         pthread_mutex_lock(&count_mutex);
         canSendPasswordNow = true;
-        pthread_cond_wait(&count_threshold_cv, &count_mutex);
-        canSendPasswordNow = false;
         
-        consumerRegisterPasswordAsCracked(crackedPassword);
+        timespec ts;
+        ts.tv_sec = time(NULL) + 1;
         
-        pthread_mutex_unlock(&count_mutex);
-        break;
+        if(pthread_cond_timedwait(&count_threshold_cv, &count_mutex, &ts) == 0) {
+            canSendPasswordNow = false;
+            consumerRegisterPasswordAsCracked(crackedPassword);
+            pthread_mutex_unlock(&count_mutex);
+        } else {
+            // timeout
+            pthread_mutex_unlock(&count_mutex);
+        }
     }
     pthread_exit (NULL);
 }
@@ -316,6 +344,7 @@ int runThreads()
 
 
 int main(int argc, char **argv) {
+    signal(SIGHUP, handle_sighup);
     std::cout << "Hello, world  777 !" << std::endl;
     loadDict("/home/jacek/Downloads/krystian-md5/proj2/dict_small.txt");
     iterDict();
