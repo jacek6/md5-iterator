@@ -5,6 +5,8 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <pthread.h>
+#include <unistd.h>
 
 using std::string;
 
@@ -129,6 +131,88 @@ void tryOutPassword(string pass) {
 }
 
 
+pthread_mutex_t count_mutex;
+pthread_cond_t count_threshold_cv;
+string crackedPassword;
+bool canSendPasswordNow = false;
+pthread_mutex_t canSendPasswordNow_mutex;
+
+bool isPasswordCorrect(string password) {
+    return false;
+}
+
+void sendCrackedPassword(string password) {
+    while(!canSendPasswordNow) ;
+    
+    pthread_mutex_lock(&count_mutex);
+    crackedPassword = password;
+    pthread_cond_signal(&count_threshold_cv);
+    pthread_mutex_unlock(&count_mutex);
+}
+
+void *consumer(void *t) {
+    std::cout << "consumer start";
+    while(true) {
+        pthread_mutex_lock(&canSendPasswordNow_mutex);
+        canSendPasswordNow = true;
+        
+        pthread_mutex_lock(&count_mutex);
+        pthread_cond_wait(&count_threshold_cv, &count_mutex);
+        canSendPasswordNow = false;
+        
+        std::cout << "zalamano haslo " << crackedPassword << "\n";
+        
+        
+        pthread_mutex_unlock(&count_mutex);
+        pthread_mutex_unlock(&canSendPasswordNow_mutex);
+        break;
+    }
+    pthread_exit (NULL);
+}
+
+void *producer1(void *t) {
+    std::cout << "producer1 seding...";
+    sendCrackedPassword("kota");
+    std::cout << "producer1 send";
+    
+    pthread_exit (NULL);
+}
+
+int runThreads()
+{
+  pthread_t threads[2];
+  pthread_attr_t attr;
+  int t1;
+
+  /* Initialize mutex and condition variable objects */
+  pthread_mutex_init(&count_mutex, NULL);
+  pthread_mutex_init(&canSendPasswordNow_mutex, NULL);
+  pthread_cond_init (&count_threshold_cv, NULL);
+
+  /* For portability, explicitly create threads in a joinable state */
+  pthread_attr_init(&attr);
+  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+  //pthread_create(&threads[0], &attr, watch_count, (void *)t1);
+  pthread_create(&threads[0], &attr, producer1, &t1);
+  pthread_create(&threads[1], &attr, consumer, &t1);
+
+  /* Wait for all threads to complete */
+  std::cout << "joining threads \n";
+  for (int i = 0; i < 2; i++) {
+    pthread_join(threads[i], NULL);
+  }
+  std::cout << "joined threads \n";
+
+  /* Clean up and exit */
+  pthread_attr_destroy(&attr);
+  pthread_mutex_destroy(&count_mutex);
+  pthread_mutex_destroy(&canSendPasswordNow_mutex);
+  pthread_cond_destroy(&count_threshold_cv);
+  pthread_exit (NULL);
+
+}
+
+
 int main(int argc, char **argv) {
     std::cout << "Hello, world  777 !" << std::endl;
     loadDict("/home/jacek/Downloads/krystian-md5/proj2/dict_small.txt");
@@ -139,6 +223,8 @@ int main(int argc, char **argv) {
     
     tryOutPassword("abc");
     tryOutPassword("kota");
+    
+    runThreads();
     
     return 0;
 }
