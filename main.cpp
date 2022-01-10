@@ -118,20 +118,19 @@ void iterDict() {
     }
 }
 
-void tryOutPassword(string pass) {
-    string hash = md5(pass);
+void consumerRegisterPasswordAsCracked(string password) {
+    std::cout << "zalamano haslo " << password << "\n";
+    
+    string hash = md5(password);
     for(int i=0; i<loadedPasswords; i++) {
         if(crackedPasswords[i]) continue;
         if(hash.compare(passwords[i])) {
             //std::cout << "match!!";
-            decodedPasswords[i] = pass;
+            decodedPasswords[i] = password;
             crackedPasswords[i] = true;
+            std::cout << "zlamane haslo '" << password << "' dla " << passwordsDescritpions[i] << "\n";
         }
     }
-}
-
-void consumerRegisterPasswordAsCracked(string password) {
-    std::cout << "zalamano haslo " << password << "\n";
 }
 
 
@@ -139,10 +138,6 @@ pthread_mutex_t count_mutex;
 pthread_cond_t count_threshold_cv;
 string crackedPassword;
 bool canSendPasswordNow = false;
-
-bool isPasswordCorrect(string password) {
-    return false;
-}
 
 void sendCrackedPassword(string password) {
     while(true) {
@@ -178,6 +173,32 @@ void *consumer(void *t) {
     pthread_exit (NULL);
 }
 
+void tryOutPassword(string pass) {
+    string hash = md5(pass);
+    for(int i=0; i<loadedPasswords; i++) {
+        if(crackedPasswords[i]) continue;
+        if(hash.compare(passwords[i])) {
+            //std::cout << "match!!";
+            sendCrackedPassword(pass);
+        }
+    }
+}
+
+void *producer0(void *t) {
+    string password;
+    for(int wordIndex=0; wordIndex<dictLen; wordIndex++) {
+        std::stringstream ss;
+        for(int i=dictWordsIndexes[wordIndex]; i<dictWordsIndexes[wordIndex+1]; i++) {
+            ss << dictWords[i];
+        }
+        ss >> password;
+        std::cout << " try pass " << password << "   ";
+        tryOutPassword(password);
+    }
+    
+    pthread_exit (NULL);
+}
+
 void *producer1(void *t) {
     std::cout << "producer1 seding...";
     sendCrackedPassword("kota");
@@ -200,7 +221,7 @@ int runThreads()
   pthread_attr_init(&attr);
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
   //pthread_create(&threads[0], &attr, watch_count, (void *)t1);
-  pthread_create(&threads[0], &attr, producer1, &t1);
+  pthread_create(&threads[0], &attr, producer0, &t1);
   pthread_create(&threads[1], &attr, consumer, &t1);
 
   /* Wait for all threads to complete */
@@ -226,9 +247,6 @@ int main(int argc, char **argv) {
     
     loadPasswords("/home/jacek/Downloads/krystian-md5/proj2/md5.txt");
     std::cout << "Hello, world  666 !" << std::endl;
-    
-    tryOutPassword("abc");
-    tryOutPassword("kota");
     
     runThreads();
     
