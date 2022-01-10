@@ -240,7 +240,7 @@ void *producer1(void *t) {
                         ss << numberPost;
                     }
                     ss >> password;
-                    std::cout << " try pass " << password << "   ";
+                    //std::cout << " try pass " << password << "   ";
                     tryOutPassword(password);
                 }
             }
@@ -253,14 +253,28 @@ void *producer1(void *t) {
 
 void *producer2(void *t) {
     string password;
-    for(int wordIndex=0; wordIndex<dictLen; wordIndex++) {
-        std::stringstream ss;
-        for(int i=dictWordsIndexes[wordIndex]; i<dictWordsIndexes[wordIndex+1]; i++) {
-            ss << (char)toupper(dictWords[i]);
+    int maxNumber = 1;
+    for(int digitsNum=0; digitsNum<=MAX_DIGITS; digitsNum++) {
+        for(int number=0; number<maxNumber; number++) {
+            for(int numberPost=0; numberPost<maxNumber; numberPost++) {
+                for(int wordIndex=0; wordIndex<dictLen; wordIndex++) {
+                    std::stringstream ss;
+                    if(digitsNum > 0) {
+                        ss << number;
+                    }
+                    for(int i=dictWordsIndexes[wordIndex]; i<dictWordsIndexes[wordIndex+1]; i++) {
+                        ss << (char)toupper(dictWords[i]);
+                    }
+                    if(digitsNum > 0) {
+                        ss << numberPost;
+                    }
+                    ss >> password;
+                    std::cout << " try pass " << password << "   ";
+                    tryOutPassword(password);
+                }
+            }
         }
-        ss >> password;
-        //std::cout << " try pass " << password << "   ";
-        tryOutPassword(password);
+        maxNumber *= 10;
     }
     
     pthread_exit (NULL);
