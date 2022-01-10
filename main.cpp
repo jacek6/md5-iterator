@@ -130,6 +130,10 @@ void tryOutPassword(string pass) {
     }
 }
 
+void consumerRegisterPasswordAsCracked(string password) {
+    std::cout << "zalamano haslo " << password << "\n";
+}
+
 
 pthread_mutex_t count_mutex;
 pthread_cond_t count_threshold_cv;
@@ -166,8 +170,7 @@ void *consumer(void *t) {
         pthread_cond_wait(&count_threshold_cv, &count_mutex);
         canSendPasswordNow = false;
         
-        std::cout << "zalamano haslo " << crackedPassword << "\n";
-        
+        consumerRegisterPasswordAsCracked(crackedPassword);
         
         pthread_mutex_unlock(&count_mutex);
         break;
