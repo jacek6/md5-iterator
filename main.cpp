@@ -7,6 +7,7 @@
 #include <iostream>
 #include <pthread.h>
 #include <unistd.h>
+#include <cctype>
 
 using std::string;
 
@@ -192,7 +193,7 @@ void *producer0(void *t) {
             ss << dictWords[i];
         }
         ss >> password;
-        std::cout << " try pass " << password << "   ";
+        //std::cout << " try pass " << password << "   ";
         tryOutPassword(password);
     }
     
@@ -200,16 +201,30 @@ void *producer0(void *t) {
 }
 
 void *producer1(void *t) {
-    std::cout << "producer1 seding...";
-    sendCrackedPassword("kota");
-    std::cout << "producer1 send";
+    string password;
+    bool first;
+    for(int wordIndex=0; wordIndex<dictLen; wordIndex++) {
+        std::stringstream ss;
+        first = true;
+        for(int i=dictWordsIndexes[wordIndex]; i<dictWordsIndexes[wordIndex+1]; i++) {
+            if(first) {
+                ss << (char)toupper(dictWords[i]);
+                first = false;
+            } else {
+                ss << dictWords[i];
+            }
+        }
+        ss >> password;
+        std::cout << " try pass " << password << "   ";
+        tryOutPassword(password);
+    }
     
     pthread_exit (NULL);
 }
 
 int runThreads()
 {
-  pthread_t threads[2];
+  pthread_t threads[3];
   pthread_attr_t attr;
   int t1;
 
@@ -222,7 +237,8 @@ int runThreads()
   pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
   //pthread_create(&threads[0], &attr, watch_count, (void *)t1);
   pthread_create(&threads[0], &attr, producer0, &t1);
-  pthread_create(&threads[1], &attr, consumer, &t1);
+  pthread_create(&threads[1], &attr, producer1, &t1);
+  pthread_create(&threads[2], &attr, consumer, &t1);
 
   /* Wait for all threads to complete */
   std::cout << "joining threads \n";
