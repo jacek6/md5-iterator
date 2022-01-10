@@ -215,6 +215,21 @@ void *producer1(void *t) {
             }
         }
         ss >> password;
+        //std::cout << " try pass " << password << "   ";
+        tryOutPassword(password);
+    }
+    
+    pthread_exit (NULL);
+}
+
+void *producer2(void *t) {
+    string password;
+    for(int wordIndex=0; wordIndex<dictLen; wordIndex++) {
+        std::stringstream ss;
+        for(int i=dictWordsIndexes[wordIndex]; i<dictWordsIndexes[wordIndex+1]; i++) {
+            ss << (char)toupper(dictWords[i]);
+        }
+        ss >> password;
         std::cout << " try pass " << password << "   ";
         tryOutPassword(password);
     }
@@ -224,7 +239,7 @@ void *producer1(void *t) {
 
 int runThreads()
 {
-  pthread_t threads[3];
+  pthread_t threads[4];
   pthread_attr_t attr;
   int t1;
 
@@ -238,7 +253,8 @@ int runThreads()
   //pthread_create(&threads[0], &attr, watch_count, (void *)t1);
   pthread_create(&threads[0], &attr, producer0, &t1);
   pthread_create(&threads[1], &attr, producer1, &t1);
-  pthread_create(&threads[2], &attr, consumer, &t1);
+  pthread_create(&threads[2], &attr, producer2, &t1);
+  pthread_create(&threads[3], &attr, consumer, &t1);
 
   /* Wait for all threads to complete */
   std::cout << "joining threads \n";
