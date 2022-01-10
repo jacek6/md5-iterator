@@ -1,3 +1,4 @@
 [Project]
-Name=proj2
+CreatedFrom=CMakeLists.txt
 Manager=KDevCMakeManager
+Name=proj2
