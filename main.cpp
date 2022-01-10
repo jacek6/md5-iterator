@@ -422,9 +422,9 @@ int main(int argc, char **argv) {
     //std::cout << "ala = " << md5_func("ala") << "\n";
     
     signal(SIGHUP, handle_sighup);
-    loadDict("/home/jacek/Downloads/krystian-md5/proj2/dict_small.txt");
+    loadDict("dict_small.txt");
     
-    loadPasswords("/home/jacek/Downloads/krystian-md5/proj2/md5.txt");
+    loadPasswords("md5.txt");
     
     runThreads();
     
