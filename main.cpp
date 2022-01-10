@@ -16,6 +16,7 @@ using std::string;
 
 #define MAX_PASSWORDS     100 
 #define PASSWORD_DESCRIPTION_LEN 1000
+#define MAX_DIGITS 2
 
 string md5(string text) {
     if(text.compare("kota")) {
@@ -187,14 +188,28 @@ void tryOutPassword(string pass) {
 
 void *producer0(void *t) {
     string password;
-    for(int wordIndex=0; wordIndex<dictLen; wordIndex++) {
-        std::stringstream ss;
-        for(int i=dictWordsIndexes[wordIndex]; i<dictWordsIndexes[wordIndex+1]; i++) {
-            ss << dictWords[i];
+    int maxNumber = 1;
+    for(int digitsNum=0; digitsNum<MAX_DIGITS; digitsNum++) {
+        for(int number=0; number<maxNumber; number++) {
+            for(int numberPost=0; numberPost<maxNumber; numberPost++) {
+                for(int wordIndex=0; wordIndex<dictLen; wordIndex++) {
+                    std::stringstream ss;
+                    if(digitsNum > 0) {
+                        ss << number;
+                    }
+                    for(int i=dictWordsIndexes[wordIndex]; i<dictWordsIndexes[wordIndex+1]; i++) {
+                        ss << dictWords[i];
+                    }
+                    if(digitsNum > 0) {
+                        ss << numberPost;
+                    }
+                    ss >> password;
+                    //std::cout << " try pass " << password << "   ";
+                    tryOutPassword(password);
+                }
+            }
         }
-        ss >> password;
-        //std::cout << " try pass " << password << "   ";
-        tryOutPassword(password);
+        maxNumber *= 10;
     }
     
     pthread_exit (NULL);
@@ -230,7 +245,7 @@ void *producer2(void *t) {
             ss << (char)toupper(dictWords[i]);
         }
         ss >> password;
-        std::cout << " try pass " << password << "   ";
+        //std::cout << " try pass " << password << "   ";
         tryOutPassword(password);
     }
     
